@@ -1,5 +1,7 @@
 # rubocop:disable Lint/ConstantResolution
 
+require "date"
+require "time"
 require "csv"
 require "google/apis/civicinfo_v2"
 require "erb"
@@ -46,6 +48,10 @@ def validate_phonenumber(phonenumber)
   end
 end
 
+def top_visits(array)
+  array.tally.sort { |a, b| b[1] <=> a[1] }.to_h
+end
+
 puts "EventManager initialized."
 
 contents = CSV.open("event_attendees.csv", headers: true, header_converters: :symbol)
@@ -53,9 +59,14 @@ contents = CSV.open("event_attendees.csv", headers: true, header_converters: :sy
 template_letter = File.read("form_letter.erb")
 erb_template = ERB.new(template_letter)
 
+hours_visited = []
+days_visited = []
 contents.each do |row|
   id = row[0]
   phonenumber = validate_phonenumber(row[:homephone])
+  regdate = Time.strptime(row[:regdate], "%D %H:%M")
+  hours_visited.push(regdate.hour)
+  days_visited.push(Date::DAYNAMES[regdate.wday])
   name = row[:first_name]
   zipcode = clean_zipcode(row[:zipcode])
   legislators = legislators_by_zipcode(zipcode)
@@ -64,5 +75,6 @@ contents.each do |row|
 
   save_thank_you_letter(id, form_letter)
 end
-
+p top_visits(hours_visited)
+p top_visits(days_visited)
 # rubocop:enable Lint/ConstantResolution
